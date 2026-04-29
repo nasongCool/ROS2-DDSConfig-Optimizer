@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<optimization_requirements>
+    <!-- Benchmark Configuration -->
+    <benchmark>
+        <test_file>/tmp/sample_benchmark.py</test_file>
+        <launch_command>launch_test</launch_command>
+    </benchmark>
+
+    <!-- Performance Requirements -->
+    <performance_requirements>
+        <latency optional="false">
+            <target_mean_ms>10</target_mean_ms>
+            <target_p95_ms>15</target_p95_ms>
+            <target_p99_ms>20</target_p99_ms>
+        </latency>
+
+        <throughput optional="true">
+            <target_msgs_per_sec>1000</target_msgs_per_sec>
+        </throughput>
+
+        <reliability optional="false">
+            <max_packet_loss_rate>0.001</max_packet_loss_rate>
+        </reliability>
+
+        <cpu_usage optional="true">
+            <max_percent>50</max_percent>
+        </cpu_usage>
+    </performance_requirements>
+
+    <!-- Optimization Settings -->
+    <optimization_settings>
+        <max_iterations>3</max_iterations>
+        <convergence_threshold>0.05</convergence_threshold>
+    </optimization_settings>
+
+    <!-- LLM Configuration -->
+    <llm_config>
+        <provider>openai</provider>
+        <model>gpt-4</model>
+        <base_url>https://api.openai.com/v1</base_url>
+        <api_key_env>OPENAI_API_KEY</api_key_env>
+    </llm_config>
+</optimization_requirements>

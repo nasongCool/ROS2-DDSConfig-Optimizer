@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<dds xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+    <profiles>
+        <!-- Transport Descriptors -->
+        <transport_descriptors>
+            <!-- UDP Transport -->
+            <transport_descriptor>
+                <transport_id>OptimizedUDPv4</transport_id>
+                <type>UDPv4</type>
+                <!-- udp_send_buffer_size: 0 = OS default (~212 KB). Range: 0–67108864 bytes -->
+                <sendBufferSize>0</sendBufferSize>
+                <!-- udp_receive_buffer_size: 4 MB recommended for high-throughput. Range: 0–67108864 bytes -->
+                <receiveBufferSize>4194304</receiveBufferSize>
+                <!-- udp_max_message_size: max UDP datagram size. Range: 1–65500 bytes -->
+                <maxMessageSize>65500</maxMessageSize>
+                <!-- udp_non_blocking_send: false = block on full buffer (safer). Values: true | false -->
+                <non_blocking_send>false</non_blocking_send>
+            </transport_descriptor>
+
+            <!-- SHM Transport (for single-host high-performance) -->
+            <transport_descriptor>
+                <transport_id>OptimizedSHM</transport_id>
+                <type>SHM</type>
+                <!-- shm_max_message_size: 512 KB default. Range: 1–4294967295 bytes -->
+                <maxMessageSize>524288</maxMessageSize>
+                <!-- shm_segment_size: total SHM segment. Must be > maxMessageSize × port_queue_capacity -->
+                <segment_size>2097152</segment_size>
+                <!-- shm_port_queue_capacity: message slots per listener. Range: 1–65536 -->
+                <port_queue_capacity>512</port_queue_capacity>
+            </transport_descriptor>
+        </transport_descriptors>
+
+        <!-- Participant Profile -->
+        <participant profile_name="optimized_participant" is_default_profile="true">
+            <domainId>0</domainId>
+            <rtps>
+                <name>OptimizedParticipant</name>
+
+                <!-- participant_send_socket_buffer: 0 = use transport default. Range: 0–67108864 bytes -->
+                <sendSocketBufferSize>0</sendSocketBufferSize>
+                <!-- participant_listen_socket_buffer: 0 = use transport default. Range: 0–67108864 bytes -->
+                <listenSocketBufferSize>0</listenSocketBufferSize>
+
+                <!-- Builtin Discovery -->
+                <builtin>
+                    <discovery_config>
+                        <!-- lease_duration_sec: participant liveness timeout. Range: 1–3600 s -->
+                        <leaseDuration>
+                            <sec>20</sec>
+                        </leaseDuration>
+                        <!-- lease_announcement_sec/nanosec: announcement period. Must be < leaseDuration -->
+                        <leaseAnnouncement>
+                            <sec>3</sec>
+                            <nanosec>0</nanosec>
+                        </leaseAnnouncement>
+                        <!-- initial_announcements_count: rapid PDP announcements at startup. Range: 1–100 -->
+                        <!-- initial_announcements_period_nanosec: period between them. Range: 1000000–1000000000 ns -->
+                        <initialAnnouncements>
+                            <count>5</count>
+                            <period>
+                                <nanosec>100000000</nanosec>
+                            </period>
+                        </initialAnnouncements>
+                    </discovery_config>
+
+                    <!-- reader_history_memory_policy: PREALLOCATED_WITH_REALLOC balances latency and memory -->
+                    <!-- Values: PREALLOCATED | PREALLOCATED_WITH_REALLOC | DYNAMIC | DYNAMIC_REUSABLE -->
+                    <readerHistoryMemoryPolicy>PREALLOCATED_WITH_REALLOC</readerHistoryMemoryPolicy>
+                    <!-- writer_history_memory_policy: same options as readerHistoryMemoryPolicy -->
+                    <writerHistoryMemoryPolicy>PREALLOCATED_WITH_REALLOC</writerHistoryMemoryPolicy>
+                </builtin>
+
+                <!-- Allocation -->
+                <allocation>
+                    <remote_locators>
+                        <!-- max_unicast_locators: pre-allocated unicast locators per remote. Range: 1–32 -->
+                        <max_unicast_locators>4</max_unicast_locators>
+                        <!-- max_multicast_locators: 0 disables multicast (recommended for single-host). Range: 0–4 -->
+                        <max_multicast_locators>1</max_multicast_locators>
+                    </remote_locators>
+                    <!-- total_participants_initial/maximum: pre-allocate participant slots. Range: 0–1000 -->
+                    <total_participants>
+                        <initial>0</initial>
+                        <maximum>0</maximum>
+                    </total_participants>
+                    <!-- total_readers_initial/maximum: pre-allocate reader slots. Range: 0–1000 -->
+                    <total_readers>
+                        <initial>0</initial>
+                        <maximum>0</maximum>
+                    </total_readers>
+                    <!-- total_writers_initial/maximum: pre-allocate writer slots. Range: 0–1000 -->
+                    <total_writers>
+                        <initial>0</initial>
+                        <maximum>0</maximum>
+                    </total_writers>
+                    <!-- send_buffers_preallocated: 0 = auto-detect from CPU cores. Range: 0–256 -->
+                    <!-- send_buffers_dynamic: allow pool to grow beyond preallocated_number. Values: true | false -->
+                    <send_buffers>
+                        <preallocated_number>0</preallocated_number>
+                        <dynamic>false</dynamic>
+                    </send_buffers>
+                </allocation>
+
+                <!-- Transport Selection -->
+                <userTransports>
+                    <transport_id>OptimizedUDPv4</transport_id>
+                    <transport_id>OptimizedSHM</transport_id>
+                </userTransports>
+                <useBuiltinTransports>false</useBuiltinTransports>
+            </rtps>
+        </participant>
+
+        <!-- Data Writer Profile -->
+        <data_writer profile_name="optimized_writer" is_default_profile="true">
+            <topic>
+                <!-- history_kind: KEEP_LAST retains only the N most recent samples. Values: KEEP_LAST | KEEP_ALL -->
+                <!-- history_depth: samples to retain when kind=KEEP_LAST. Range: 1–10000 -->
+                <historyQos>
+                    <kind>KEEP_LAST</kind>
+                    <depth>1</depth>
+                </historyQos>
+
+                <!-- max_samples: max total samples in writer at any time. Range: 1–100000 -->
+                <!-- allocated_samples: pre-allocated sample slots. Range: 1–10000 -->
+                <resourceLimitsQos>
+                    <max_samples>5000</max_samples>
+                    <max_instances>1</max_instances>
+                    <max_samples_per_instance>5000</max_samples_per_instance>
+                    <allocated_samples>100</allocated_samples>
+                </resourceLimitsQos>
+            </topic>
+
+            <qos>
+                <!-- reliability_kind: RELIABLE guarantees delivery. Values: RELIABLE | BEST_EFFORT -->
+                <reliability>
+                    <kind>RELIABLE</kind>
+                    <max_blocking_time>
+                        <sec>0</sec>
+                        <nanosec>100000000</nanosec>
+                    </max_blocking_time>
+                </reliability>
+
+                <!-- durability_kind: VOLATILE = no late-joiner cache. Values: VOLATILE | TRANSIENT_LOCAL -->
+                <durability>
+                    <kind>VOLATILE</kind>
+                </durability>
+
+                <!-- data_sharing_kind: AUTO enables zero-copy for same-host. Values: AUTO | ON | OFF -->
+                <data_sharing>
+                    <kind>AUTO</kind>
+                </data_sharing>
+
+                <!-- publish_mode: SYNCHRONOUS sends in calling thread (lowest latency). Values: SYNCHRONOUS | ASYNCHRONOUS -->
+                <publishMode>
+                    <kind>SYNCHRONOUS</kind>
+                </publishMode>
+
+                <!-- disable_positive_acks: false = send ACKs (required for RELIABLE). Values: true | false -->
+                <disablePositiveAcks>
+                    <enabled>false</enabled>
+                </disablePositiveAcks>
+            </qos>
+
+            <!-- writer_heartbeat_period_sec/nanosec: heartbeat period. Default 500 ms. Range: 0–60 s / 1000000–999999999 ns -->
+            <!-- writer_nack_response_delay_nanosec: delay before retransmit on NACK. Range: 0–100000000 ns -->
+            <times>
+                <initialHeartbeatDelay>
+                    <nanosec>0</nanosec>
+                </initialHeartbeatDelay>
+                <heartbeatPeriod>
+                    <sec>0</sec>
+                    <nanosec>500000000</nanosec>
+                </heartbeatPeriod>
+                <nackResponseDelay>
+                    <nanosec>5000000</nanosec>
+                </nackResponseDelay>
+            </times>
+
+            <!-- data_writer_history_memory_policy: PREALLOCATED_WITH_REALLOC balances latency and memory -->
+            <!-- Values: PREALLOCATED | PREALLOCATED_WITH_REALLOC | DYNAMIC | DYNAMIC_REUSABLE -->
+            <historyMemoryPolicy>PREALLOCATED_WITH_REALLOC</historyMemoryPolicy>
+        </data_writer>
+
+        <!-- Data Reader Profile -->
+        <data_reader profile_name="optimized_reader" is_default_profile="true">
+            <topic>
+                <!-- history_kind / history_depth: same as writer -->
+                <historyQos>
+                    <kind>KEEP_LAST</kind>
+                    <depth>1</depth>
+                </historyQos>
+
+                <!-- max_samples / allocated_samples: same as writer -->
+                <resourceLimitsQos>
+                    <max_samples>5000</max_samples>
+                    <max_instances>1</max_instances>
+                    <max_samples_per_instance>5000</max_samples_per_instance>
+                    <allocated_samples>100</allocated_samples>
+                </resourceLimitsQos>
+            </topic>
+
+            <qos>
+                <!-- reliability_kind: must match writer. Values: RELIABLE | BEST_EFFORT -->
+                <reliability>
+                    <kind>RELIABLE</kind>
+                </reliability>
+
+                <!-- durability_kind: must match writer. Values: VOLATILE | TRANSIENT_LOCAL -->
+                <durability>
+                    <kind>VOLATILE</kind>
+                </durability>
+
+                <!-- data_sharing_kind: AUTO enables zero-copy for same-host. Values: AUTO | ON | OFF -->
+                <data_sharing>
+                    <kind>AUTO</kind>
+                </data_sharing>
+            </qos>
+
+            <!-- reader_initial_acknack_delay_nanosec: delay before first ACKNACK. Range: 0–500000000 ns -->
+            <!-- reader_heartbeat_response_delay_nanosec: delay before responding to heartbeat. Range: 0–100000000 ns -->
+            <times>
+                <initialAcknackDelay>
+                    <nanosec>70000000</nanosec>
+                </initialAcknackDelay>
+                <heartbeatResponseDelay>
+                    <nanosec>5000000</nanosec>
+                </heartbeatResponseDelay>
+            </times>
+
+            <!-- data_reader_history_memory_policy: same options as writer -->
+            <historyMemoryPolicy>PREALLOCATED_WITH_REALLOC</historyMemoryPolicy>
+        </data_reader>
+    </profiles>
+
+    <!-- intraprocess_delivery: FULL bypasses transport for same-process nodes (sub-microsecond latency) -->
+    <!-- Values: OFF | USER_DATA_ONLY | FULL -->
+    <library_settings>
+        <intraprocess_delivery>OFF</intraprocess_delivery>
+    </library_settings>
+</dds>

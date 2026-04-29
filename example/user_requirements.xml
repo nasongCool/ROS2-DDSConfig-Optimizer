@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<optimization_requirements>
+
+    <!--
+        Benchmark test script path (relative to this file's directory).
+        The optimizer resolves this path relative to the folder containing
+        this XML file, so you can use a relative path here.
+    -->
+    <benchmark>
+        <test_file>example_benchmark.py</test_file>
+        <launch_command>launch_test</launch_command>
+    </benchmark>
+
+    <!--
+        Performance requirements.
+        optional="false"  → MUST meet (hard requirement)
+        optional="true"   → nice to have (soft requirement)
+
+        Targets are calibrated to actual benchmark measurements on this host:
+          - Mean latency floor is ~0.42 ms for cross-process DDS communication
+          - p95/p99 improve from ~0.60 ms (initial) to ~0.46 ms with tuning
+          - Publisher runs at 10 Hz; throughput is application-limited, not DDS-limited
+          - CPU drops from ~0.40% to ~0.22% with optimized DDS config
+
+        With these targets the optimizer requires exactly 3 epochs to succeed:
+          Epoch 1: p95/p99 fail (0.60 ms > 0.50 ms target) → optimizer continues
+          Epoch 2: p95/p99 still fail (0.54 ms > 0.50 ms target) → optimizer continues
+          Epoch 3: all metrics pass → success
+    -->
+    <performance_requirements>
+        <latency optional="false">
+            <target_mean_ms>0.5</target_mean_ms>
+            <target_p95_ms>0.5</target_p95_ms>
+            <target_p99_ms>0.5</target_p99_ms>
+        </latency>
+        <!--
+            NOTE: If your publisher sends at a fixed rate (e.g., a sensor node at 10 Hz),
+            the measured throughput is bounded by that publish rate regardless of DDS settings.
+            Setting target_msgs_per_sec higher than the publisher's actual rate will cause
+            this requirement to appear permanently unmet across all optimization epochs.
+        -->
+        <throughput optional="true">
+            <target_msgs_per_sec>10</target_msgs_per_sec>
+        </throughput>
+        <reliability optional="false">
+            <max_packet_loss_rate>0.001</max_packet_loss_rate>
+        </reliability>
+        <cpu_max_usage optional="true">
+            <max_percent>0.35</max_percent>  <!-- unit: % -->
+        </cpu_max_usage>
+        <memory_max_usage optional="true">
+            <max_mb>256</max_mb>            <!-- unit: MB -->
+        </memory_max_usage>
+    </performance_requirements>
+
+    <!-- Optimization loop settings -->
+    <optimization_settings>
+        <max_iterations>3</max_iterations>
+        <convergence_threshold>0.05</convergence_threshold>
+    </optimization_settings>
+
+    <!--
+        Option 1 — OpenAI:
+            export LLM_API_KEY=<your-openai-api-key>
+
+            <provider>openai</provider>
+            <model>gpt-4o</model>
+            <base_url>https://api.openai.com/v1</base_url>
+            <api_key_env>LLM_API_KEY</api_key_env>
+
+        Option 2 — Anthropic:
+            export LLM_API_KEY=<your-anthropic-api-key>
+
+            <provider>anthropic</provider>
+            <model>claude-3-5-sonnet-20241022</model>
+            <api_key_env>LLM_API_KEY</api_key_env>
+    -->
+    <llm_config>
+        <provider>openrouter</provider>
+        <model>z-ai/glm-4.5-air:free</model>
+        <api_key_env>LLM_API_KEY</api_key_env>
+    </llm_config>
+
+</optimization_requirements>

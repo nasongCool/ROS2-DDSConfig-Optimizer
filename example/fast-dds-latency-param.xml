@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <transport_descriptors>
+      <transport_descriptor>
+          <transport_id>latency</transport_id>
+          <type>UDPv4</type>
+          <sendBufferSize>524288</sendBufferSize>
+          <receiveBufferSize>524288</receiveBufferSize>
+      </transport_descriptor>
+  </transport_descriptors>
+
+  <participant profile_name="verify_latency">
+    <rtps>
+      <sendSocketBufferSize>524288</sendSocketBufferSize>
+      <listenSocketBufferSize>524288</listenSocketBufferSize>
+
+      <useBuiltinTransports>true</useBuiltinTransports>
+      <builtinTransports>SHM</builtinTransports>
+
+      <userTransports>
+        <transport_id>latency</transport_id>
+      </userTransports>
+    </rtps>
+  </participant>
+</profiles>

@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROS2 DDSConfig Optimizer Dashboard</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        /* Header */
+        .header {
+            background: #1a1d2e;
+            border-bottom: 1px solid #2d3748;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header h1 { font-size: 1.25rem; font-weight: 600; color: #63b3ed; }
+        .header .subtitle { font-size: 0.8rem; color: #718096; }
+        .badge {
+            background: #2b6cb0; color: #bee3f8;
+            padding: 2px 8px; border-radius: 12px;
+            font-size: 0.7rem; font-weight: 600;
+        }
+        /* Layout */
+        .container { display: flex; height: calc(100vh - 57px); }
+        .sidebar {
+            width: 320px; min-width: 280px;
+            background: #1a1d2e;
+            border-right: 1px solid #2d3748;
+            overflow-y: auto; padding: 16px;
+        }
+        .main { flex: 1; overflow-y: auto; padding: 24px; }
+        /* Section titles */
+        .section-title {
+            font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.1em;
+            color: #718096; margin-bottom: 12px;
+        }
+        /* Run cards */
+        .session-card {
+            background: #2d3748; border: 1px solid #4a5568;
+            border-radius: 8px; padding: 12px; margin-bottom: 8px;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .session-card:hover { border-color: #63b3ed; background: #2a3a52; }
+        .session-card.active { border-color: #63b3ed; background: #1a3a5c; }
+        .session-card .run-timestamp {
+            font-family: monospace; font-size: 0.85rem;
+            color: #63b3ed; margin-bottom: 4px; font-weight: 600;
+        }
+        .session-card .session-meta {
+            font-size: 0.75rem; color: #a0aec0;
+            display: flex; gap: 8px; flex-wrap: wrap;
+        }
+        .status-badge {
+            padding: 1px 6px; border-radius: 10px;
+            font-size: 0.65rem; font-weight: 700;
+        }
+        .status-success { background: #276749; color: #9ae6b4; }
+        .status-failed  { background: #742a2a; color: #feb2b2; }
+        .status-running { background: #744210; color: #fbd38d; }
+        /* Requirements status panel */
+        .req-panel {
+            background: #1a1d2e; border: 1px solid #2d3748;
+            border-radius: 8px; padding: 16px; margin-bottom: 24px;
+        }
+        .req-panel-title {
+            font-size: 0.85rem; font-weight: 600; color: #a0aec0;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+        }
+        .req-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .req-card {
+            border-radius: 6px; padding: 10px 12px;
+            border: 1px solid;
+        }
+        .req-card.met {
+            background: #1a3a2a; border-color: #276749;
+        }
+        .req-card.not-met {
+            background: #3a1a1a; border-color: #742a2a;
+        }
+        .req-card.optional-met {
+            background: #1a2a3a; border-color: #2b6cb0;
+        }
+        .req-card.optional-not-met {
+            background: #2a2a1a; border-color: #744210;
+        }
+        .req-card .req-name {
+            font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+        .req-card.met .req-name         { color: #68d391; }
+        .req-card.not-met .req-name     { color: #fc8181; }
+        .req-card.optional-met .req-name     { color: #63b3ed; }
+        .req-card.optional-not-met .req-name { color: #f6ad55; }
+        .req-card .req-values {
+            font-size: 0.75rem; color: #a0aec0;
+        }
+        .req-card .req-status {
+            font-size: 0.8rem; font-weight: 700; margin-top: 4px;
+        }
+        .req-card.met .req-status         { color: #68d391; }
+        .req-card.not-met .req-status     { color: #fc8181; }
+        .req-card.optional-met .req-status     { color: #63b3ed; }
+        .req-card.optional-not-met .req-status { color: #f6ad55; }
+        /* Metrics grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px; margin-bottom: 24px;
+        }
+        .metric-card {
+            background: #1a1d2e; border: 1px solid #2d3748;
+            border-radius: 8px; padding: 14px;
+        }
+        .metric-card .metric-label {
+            font-size: 0.7rem; color: #718096;
+            text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;
+        }
+        .metric-card .metric-value { font-size: 1.4rem; font-weight: 700; color: #63b3ed; }
+        .metric-card .metric-unit  { font-size: 0.75rem; color: #a0aec0; }
+        .metric-card.success .metric-value { color: #68d391; }
+        .metric-card.warning .metric-value { color: #f6ad55; }
+        .metric-card.danger  .metric-value { color: #fc8181; }
+        /* Epoch table */
+        .table-container {
+            background: #1a1d2e; border: 1px solid #2d3748;
+            border-radius: 8px; overflow: hidden; margin-bottom: 24px;
+        }
+        .table-title {
+            padding: 12px 16px; font-size: 0.85rem; font-weight: 600;
+            border-bottom: 1px solid #2d3748; color: #a0aec0;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            padding: 10px 12px; text-align: left;
+            font-size: 0.7rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            color: #718096; background: #161927;
+            border-bottom: 1px solid #2d3748;
+        }
+        td { padding: 10px 12px; font-size: 0.8rem; border-bottom: 1px solid #1e2535; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #1e2535; }
+        .check { color: #68d391; }
+        .cross { color: #fc8181; }
+        /* Score bar */
+        .score-bar-container { display: flex; align-items: center; gap: 8px; }
+        .score-bar { flex: 1; height: 6px; background: #2d3748; border-radius: 3px; overflow: hidden; }
+        .score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+        .score-text { font-size: 0.75rem; color: #a0aec0; min-width: 36px; }
+        /* Config viewer */
+        .config-viewer {
+            background: #161927; border: 1px solid #2d3748;
+            border-radius: 8px; overflow: hidden; margin-bottom: 24px;
+        }
+        .config-viewer-header {
+            padding: 10px 16px; display: flex;
+            justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #2d3748; background: #1a1d2e;
+        }
+        .config-viewer-title { font-size: 0.85rem; font-weight: 600; color: #a0aec0; }
+        .config-content {
+            padding: 16px; font-family: 'Courier New', monospace;
+            font-size: 0.75rem; line-height: 1.6; color: #a0aec0;
+            overflow-x: auto; max-height: 400px; overflow-y: auto; white-space: pre;
+        }
+        /* Buttons */
+        .btn {
+            padding: 6px 12px; border-radius: 6px; border: none;
+            cursor: pointer; font-size: 0.75rem; font-weight: 600; transition: all 0.15s;
+        }
+        .btn-primary   { background: #2b6cb0; color: #bee3f8; }
+        .btn-primary:hover { background: #2c5282; }
+        .btn-secondary { background: #2d3748; color: #a0aec0; border: 1px solid #4a5568; }
+        .btn-secondary:hover { background: #4a5568; }
+        /* Empty / loading */
+        .empty-state { text-align: center; padding: 60px 20px; color: #718096; }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 16px; }
+        .empty-state h3 { font-size: 1rem; margin-bottom: 8px; color: #a0aec0; }
+        .empty-state p { font-size: 0.85rem; }
+        .loading { text-align: center; padding: 40px; color: #718096; }
+        /* Refresh button */
+        .refresh-btn {
+            background: none; border: 1px solid #4a5568; color: #a0aec0;
+            padding: 4px 10px; border-radius: 6px; cursor: pointer;
+            font-size: 0.75rem; float: right;
+        }
+        .refresh-btn:hover { background: #2d3748; }
+        /* Export command */
+        .export-cmd {
+            background: #161927; border: 1px solid #2d3748; border-radius: 6px;
+            padding: 10px 14px; font-family: monospace; font-size: 0.8rem;
+            color: #68d391; margin-bottom: 24px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .copy-btn {
+            background: #2d3748; border: none; color: #a0aec0;
+            padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem;
+        }
+        .copy-btn:hover { background: #4a5568; }
+        /* Result banner */
+        .result-banner {
+            border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;
+            font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 10px;
+        }
+        .result-banner.success { background: #1a3a2a; border: 1px solid #276749; color: #68d391; }
+        .result-banner.partial { background: #3a2a1a; border: 1px solid #744210; color: #f6ad55; }
+        .result-banner.running { background: #1a2a3a; border: 1px solid #2b6cb0; color: #63b3ed; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>⚡ ROS2 DDSConfig Optimizer</h1>
+            <div class="subtitle">ROS2 DDS Performance Optimization Dashboard</div>
+        </div>
+        <span class="badge">FastDDS</span>
+    </div>
+
+    <div class="container">
+        <!-- Sidebar: Optimization History -->
+        <div class="sidebar">
+            <div class="section-title">
+                Optimization History
+                <button class="refresh-btn" onclick="loadSessions()">↻ Refresh</button>
+            </div>
+            <div id="session-list">
+                <div class="loading">Loading history...</div>
+            </div>
+        </div>
+
+        <!-- Main: Run Details -->
+        <div class="main" id="main-content">
+            <div class="empty-state">
+                <div class="icon">🎯</div>
+                <h3>Select an Optimization Run</h3>
+                <p>Choose a run from the sidebar to view details.</p>
+                <br>
+                <p style="font-size:0.75rem; color:#4a5568;">
+                    Run: <code style="color:#63b3ed">fastdds-optimizer run --requirements example/user_requirements.xml</code>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let currentSessionId = null;
+
+        // -----------------------------------------------------------------------
+        // Load history list
+        // -----------------------------------------------------------------------
+        async function loadSessions() {
+            const listEl = document.getElementById('session-list');
+            listEl.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                const resp = await fetch(`${API_BASE}/api/sessions`);
+                const sessions = await resp.json();
+
+                if (!sessions.length) {
+                    listEl.innerHTML = `
+                        <div class="empty-state" style="padding:20px">
+                            <div class="icon" style="font-size:2rem">📭</div>
+                            <p>No runs yet.<br>Run the optimizer to get started.</p>
+                        </div>`;
+                    return;
+                }
+
+                listEl.innerHTML = sessions.map(s => {
+                    const runId = s.run_dir || s.session_id;
+                    const statusCls = s.success ? 'status-success' : s.completed_at ? 'status-failed' : 'status-running';
+                    const statusTxt = s.success ? '✓ ALL MET' : s.completed_at ? '⚠ PARTIAL' : '⟳ RUNNING';
+                    return `
+                    <div class="session-card ${runId === currentSessionId ? 'active' : ''}"
+                         onclick="loadSession('${runId}')">
+                        <div class="run-timestamp">${formatRunDir(runId)}</div>
+                        <div class="session-meta">
+                            <span class="status-badge ${statusCls}">${statusTxt}</span>
+                            <span>${s.epochs_count || s.iterations_count || 0} epoch(s)</span>
+                            <span>score: ${((s.best_score || 0) * 100).toFixed(1)}%</span>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                listEl.innerHTML = `<div style="color:#fc8181;padding:10px">Error: ${e.message}</div>`;
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // Load run details
+        // -----------------------------------------------------------------------
+        async function loadSession(sessionId) {
+            currentSessionId = sessionId;
+
+            document.querySelectorAll('.session-card').forEach(el => {
+                el.classList.toggle('active', el.onclick.toString().includes(`'${sessionId}'`));
+            });
+
+            const mainEl = document.getElementById('main-content');
+            mainEl.innerHTML = '<div class="loading">Loading run details...</div>';
+
+            try {
+                const [sessionResp, iterResp] = await Promise.all([
+                    fetch(`${API_BASE}/api/sessions/${sessionId}`),
+                    fetch(`${API_BASE}/api/sessions/${sessionId}/iterations`),
+                ]);
+                const session = await sessionResp.json();
+                const iterations = await iterResp.json();
+                renderSession(session, iterations);
+            } catch (e) {
+                mainEl.innerHTML = `<div style="color:#fc8181;padding:20px">Error: ${e.message}</div>`;
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // Render run details
+        // -----------------------------------------------------------------------
+        function renderSession(session, iterations) {
+            const mainEl = document.getElementById('main-content');
+
+            const bestIter = iterations.reduce((best, it) =>
+                (it.performance_score || 0) > (best?.performance_score || 0) ? it : best, null);
+            const bestResults = bestIter?.results || {};
+
+            const runId = session.run_dir || session.session_id;
+
+            // Result banner
+            const bannerHtml = buildResultBanner(session);
+
+            // Requirements status panel
+            const reqHtml = buildRequirementsPanel(bestIter, session);
+
+            // Metrics summary cards
+            const metricsHtml = buildMetricsCards(bestResults, session, iterations);
+
+            // Epoch table
+            const tableHtml = buildEpochTable(iterations);
+
+            // Config section
+            const configHtml = session.final_config_path ? buildConfigSection(runId) : '';
+
+            // Export command
+            const exportHtml = session.final_config_path ? `
+                <div class="export-cmd">
+                    <span>export FASTRTPS_DEFAULT_PROFILES_FILE=${session.final_config_path}</span>
+                    <button class="copy-btn" onclick="copyToClipboard('export FASTRTPS_DEFAULT_PROFILES_FILE=${session.final_config_path}')">Copy</button>
+                </div>` : '';
+
+            mainEl.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+                    <div>
+                        <h2 style="font-size:1rem;color:#e2e8f0">Run: <span style="font-family:monospace;color:#63b3ed">${formatRunDir(runId)}</span></h2>
+                        <div style="font-size:0.75rem;color:#718096;margin-top:4px">
+                            Started: ${formatDate(session.started_at)} &nbsp;|&nbsp;
+                            ${session.completed_at ? 'Completed: ' + formatDate(session.completed_at) : '<span style="color:#f6ad55">Running...</span>'}
+                        </div>
+                    </div>
+                </div>
+
+                ${bannerHtml}
+                ${reqHtml}
+                ${metricsHtml}
+                ${exportHtml}
+                ${tableHtml}
+                ${configHtml}
+            `;
+        }
+
+        // -----------------------------------------------------------------------
+        // Result banner
+        // -----------------------------------------------------------------------
+        function buildResultBanner(session) {
+            if (!session.completed_at) {
+                return `<div class="result-banner running">⟳ Optimization in progress...</div>`;
+            }
+            if (session.success) {
+                return `<div class="result-banner success">✓ All requirements met — optimization successful!</div>`;
+            }
+            const reason = session.converged
+                ? 'Stopped: converged (no further improvement)'
+                : 'Stopped: max epochs reached';
+            return `<div class="result-banner partial">⚠ Requirements not fully met — best effort result. ${reason}</div>`;
+        }
+
+        // -----------------------------------------------------------------------
+        // Requirements status panel
+        // -----------------------------------------------------------------------
+        function buildRequirementsPanel(bestIter, session) {
+            if (!bestIter || !bestIter.results) {
+                return '';
+            }
+
+            // Build metric status from the iteration's stored data
+            // We reconstruct from requirements + results
+            const reqs = session.requirements?.performance_requirements || {};
+            const results = bestIter.results || {};
+
+            const cards = [];
+
+            // Helper: format value
+            function fmt(val, unit, scale) {
+                if (val == null) return 'N/A';
+                return (val * (scale || 1)).toFixed(unit === '%' && scale === 100 ? 4 : 2) + unit;
+            }
+
+            // Latency
+            if (reqs.latency) {
+                const lat = reqs.latency;
+                const optional = lat.optional;
+                if (lat.target_mean_ms != null && results.mean_latency_ms != null) {
+                    const met = results.mean_latency_ms <= lat.target_mean_ms;
+                    cards.push(makeReqCard('Mean Latency', optional,
+                        `≤ ${lat.target_mean_ms}ms`, fmt(results.mean_latency_ms, 'ms'), met));
+                }
+                if (lat.target_p95_ms != null && results.p95_latency_ms != null) {
+                    const met = results.p95_latency_ms <= lat.target_p95_ms;
+                    cards.push(makeReqCard('P95 Latency', optional,
+                        `≤ ${lat.target_p95_ms}ms`, fmt(results.p95_latency_ms, 'ms'), met));
+                }
+                if (lat.target_p99_ms != null && results.p99_latency_ms != null) {
+                    const met = results.p99_latency_ms <= lat.target_p99_ms;
+                    cards.push(makeReqCard('P99 Latency', optional,
+                        `≤ ${lat.target_p99_ms}ms`, fmt(results.p99_latency_ms, 'ms'), met));
+                }
+            }
+
+            // Throughput
+            if (reqs.throughput) {
+                const thr = reqs.throughput;
+                const optional = thr.optional;
+                if (thr.target_msgs_per_sec != null && results.msgs_per_sec != null) {
+                    const met = results.msgs_per_sec >= thr.target_msgs_per_sec;
+                    cards.push(makeReqCard('Throughput', optional,
+                        `≥ ${thr.target_msgs_per_sec} msg/s`, fmt(results.msgs_per_sec, ' msg/s'), met));
+                }
+            }
+
+            // Reliability
+            if (reqs.reliability) {
+                const rel = reqs.reliability;
+                const optional = rel.optional;
+                if (rel.max_packet_loss_rate != null && results.packet_loss_rate != null) {
+                    const met = results.packet_loss_rate <= rel.max_packet_loss_rate;
+                    cards.push(makeReqCard('Packet Loss', optional,
+                        `≤ ${(rel.max_packet_loss_rate * 100).toFixed(4)}%`,
+                        fmt(results.packet_loss_rate, '%', 100), met));
+                }
+            }
+
+            // CPU
+            if (reqs.cpu_usage) {
+                const cpu = reqs.cpu_usage;
+                const optional = cpu.optional;
+                if (cpu.max_percent != null && results.cpu_percent != null) {
+                    const met = results.cpu_percent <= cpu.max_percent;
+                    cards.push(makeReqCard('CPU Usage', optional,
+                        `≤ ${cpu.max_percent}%`, fmt(results.cpu_percent, '%'), met));
+                }
+            }
+
+            if (!cards.length) return '';
+
+            const allRequired = cards.filter(c => !c.optional).every(c => c.met);
+            const panelTitle = allRequired
+                ? '✓ Requirements Status — All required metrics met'
+                : '⚠ Requirements Status — Some required metrics not met';
+
+            return `
+                <div class="req-panel">
+                    <div class="req-panel-title">${panelTitle}</div>
+                    <div class="req-grid">
+                        ${cards.map(c => c.html).join('')}
+                    </div>
+                </div>`;
+        }
+
+        function makeReqCard(name, optional, target, actual, met) {
+            let cls;
+            if (optional) {
+                cls = met ? 'optional-met' : 'optional-not-met';
+            } else {
+                cls = met ? 'met' : 'not-met';
+            }
+            const optTag = optional ? ' <span style="font-size:0.6rem;opacity:0.7">(optional)</span>' : '';
+            const statusIcon = met ? '✓ MET' : '✗ NOT MET';
+            const html = `
+                <div class="req-card ${cls}">
+                    <div class="req-name">${name}${optTag}</div>
+                    <div class="req-values">Target: ${target}<br>Actual: ${actual}</div>
+                    <div class="req-status">${statusIcon}</div>
+                </div>`;
+            return { met, optional, html };
+        }
+
+        // -----------------------------------------------------------------------
+        // Metrics summary cards
+        // -----------------------------------------------------------------------
+        function buildMetricsCards(results, session, iterations) {
+            const bestScore = Math.max(...iterations.map(i => i.performance_score || 0), 0);
+
+            const cards = [
+                {
+                    label: 'Best Score',
+                    value: (bestScore * 100).toFixed(1), unit: '%',
+                    cls: bestScore >= 0.9 ? 'success' : bestScore >= 0.6 ? 'warning' : 'danger'
+                },
+                {
+                    label: 'Epochs Run',
+                    value: iterations.length,
+                    unit: `/ ${session.requirements?.optimization_settings?.max_iterations || '?'}`,
+                    cls: ''
+                },
+                {
+                    label: 'Mean Latency',
+                    value: results.mean_latency_ms != null ? results.mean_latency_ms.toFixed(2) : 'N/A',
+                    unit: 'ms', cls: ''
+                },
+                {
+                    label: 'Throughput',
+                    value: results.msgs_per_sec != null ? results.msgs_per_sec.toFixed(0) : 'N/A',
+                    unit: 'msg/s', cls: ''
+                },
+                {
+                    label: 'Packet Loss',
+                    value: results.packet_loss_rate != null ? (results.packet_loss_rate * 100).toFixed(3) : 'N/A',
+                    unit: '%', cls: ''
+                },
+                {
+                    label: 'CPU Usage',
+                    value: results.cpu_percent != null ? results.cpu_percent.toFixed(1) : 'N/A',
+                    unit: '%', cls: ''
+                },
+            ];
+
+            return `<div class="metrics-grid">
+                ${cards.map(c => `
+                    <div class="metric-card ${c.cls}">
+                        <div class="metric-label">${c.label}</div>
+                        <div class="metric-value">${c.value}</div>
+                        <div class="metric-unit">${c.unit}</div>
+                    </div>
+                `).join('')}
+            </div>`;
+        }
+
+        // -----------------------------------------------------------------------
+        // Epoch table
+        // -----------------------------------------------------------------------
+        function buildEpochTable(iterations) {
+            if (!iterations.length) return '<div style="color:#718096;padding:20px">No epochs recorded.</div>';
+
+            const rows = iterations.map(it => {
+                const r = it.results || {};
+                const score = it.performance_score || 0;
+                const barColor = score >= 0.9 ? '#68d391' : score >= 0.6 ? '#f6ad55' : '#fc8181';
+                return `
+                    <tr>
+                        <td style="color:#a0aec0;font-weight:600">Epoch ${it.iteration_number}</td>
+                        <td>
+                            <div class="score-bar-container">
+                                <div class="score-bar">
+                                    <div class="score-bar-fill" style="width:${(score*100).toFixed(0)}%;background:${barColor}"></div>
+                                </div>
+                                <span class="score-text">${(score*100).toFixed(1)}%</span>
+                            </div>
+                        </td>
+                        <td>${r.mean_latency_ms != null ? r.mean_latency_ms.toFixed(2) + 'ms' : '-'}</td>
+                        <td>${r.p95_latency_ms != null ? r.p95_latency_ms.toFixed(2) + 'ms' : '-'}</td>
+                        <td>${r.msgs_per_sec != null ? r.msgs_per_sec.toFixed(0) : '-'}</td>
+                        <td>${r.packet_loss_rate != null ? (r.packet_loss_rate*100).toFixed(3) + '%' : '-'}</td>
+                        <td>${r.cpu_percent != null ? r.cpu_percent.toFixed(1) + '%' : '-'}</td>
+                        <td>
+                            <span class="${it.required_metrics_met ? 'check' : 'cross'}">
+                                ${it.required_metrics_met ? '✓ Met' : '✗ Not met'}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-secondary" onclick="loadIterationConfig('${currentSessionId}', ${it.iteration_number})">
+                                View Config
+                            </button>
+                        </td>
+                    </tr>`;
+            }).join('');
+
+            return `
+                <div class="table-container">
+                    <div class="table-title">Epoch History</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Epoch</th>
+                                <th>Score</th>
+                                <th>Mean Latency</th>
+                                <th>P95 Latency</th>
+                                <th>Throughput</th>
+                                <th>Packet Loss</th>
+                                <th>CPU</th>
+                                <th>Required Met</th>
+                                <th>Config</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+        }
+
+        // -----------------------------------------------------------------------
+        // Config viewer
+        // -----------------------------------------------------------------------
+        function buildConfigSection(runId) {
+            return `
+                <div class="config-viewer" id="config-viewer">
+                    <div class="config-viewer-header">
+                        <span class="config-viewer-title" id="config-title">Best Config (best_config.xml)</span>
+                        <button class="btn btn-primary" onclick="loadFinalConfig('${runId}')">Load Best Config</button>
+                    </div>
+                    <div class="config-content" id="config-content">
+                        Click "Load Best Config" to view the optimized FastDDS XML.
+                    </div>
+                </div>`;
+        }
+
+        async function loadFinalConfig(sessionId) {
+            const contentEl = document.getElementById('config-content');
+            const titleEl   = document.getElementById('config-title');
+            if (!contentEl) return;
+            contentEl.textContent = 'Loading...';
+            titleEl.textContent   = 'Best Config (best_config.xml)';
+            try {
+                const resp = await fetch(`${API_BASE}/api/sessions/${sessionId}/config`);
+                contentEl.textContent = await resp.text();
+            } catch (e) {
+                contentEl.textContent = `Error: ${e.message}`;
+            }
+        }
+
+        async function loadIterationConfig(sessionId, iteration) {
+            const contentEl = document.getElementById('config-content');
+            const titleEl   = document.getElementById('config-title');
+            if (!contentEl) return;
+            contentEl.textContent = 'Loading...';
+            titleEl.textContent   = `Config — Epoch ${iteration}`;
+            try {
+                const resp = await fetch(`${API_BASE}/api/sessions/${sessionId}/config/${iteration}`);
+                contentEl.textContent = await resp.text();
+            } catch (e) {
+                contentEl.textContent = `Error: ${e.message}`;
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // Utilities
+        // -----------------------------------------------------------------------
+        function formatRunDir(runDir) {
+            // "20260306_110551" → "2026-03-06  11:05:51"
+            if (!runDir || runDir.length < 15) return runDir || 'Unknown';
+            const d = runDir.replace(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2}).*/, '$1-$2-$3  $4:$5:$6');
+            return d !== runDir ? d : runDir;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            try { return new Date(dateStr).toLocaleString(); } catch { return dateStr; }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text)
+                .then(() => alert('Copied to clipboard!'))
+                .catch(() => prompt('Copy this command:', text));
+        }
+
+        // Initial load
+        loadSessions();
+    </script>
+</body>
+</html>

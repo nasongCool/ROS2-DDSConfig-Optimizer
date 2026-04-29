@@ -1,0 +1,20 @@
+{
+    "BasicPerformanceMetrics.FIRST_SENT_RECEIVED_LATENCY": 9.37,
+    "BasicPerformanceMetrics.LAST_SENT_RECEIVED_LATENCY": 10.60,
+    "BasicPerformanceMetrics.MEAN_LATENCY": 9.85,
+    "BasicPerformanceMetrics.MAX_LATENCY": 18.42,
+    "BasicPerformanceMetrics.MEAN_FRAME_RATE": 104.84,
+    "BasicPerformanceMetrics.MEAN_PLAYBACK_FRAME_RATE": 111.60,
+    "BasicPerformanceMetrics.NUM_MISSED_FRAMES": 0.0,
+    "BasicPerformanceMetrics.NUM_FRAMES_SENT": 557.0,
+    "BasicPerformanceMetrics.MEAN_JITTER": 1.33,
+    "BasicPerformanceMetrics.MAX_JITTER": 8.68,
+    "ResourceMetrics.MEAN_OVERALL_CPU_UTILIZATION": 2.56,
+    "ResourceMetrics.MAX_OVERALL_CPU_UTILIZATION": 14.58,
+    "BenchmarkMetadata.PEAK_THROUGHPUT_PREDICTION": 111.4,
+    "metadata": {
+        "benchmark_name": "SampleBenchmark",
+        "ros_distro": "jazzy",
+        "timestamp": "2024-01-01T00:00:00"
+    }
+}

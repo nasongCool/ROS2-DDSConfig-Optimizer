@@ -1,0 +1,430 @@
+{
+  "description": "Performance-critical FastDDS parameters for ROS2 optimization (~45 parameters)",
+  "version": "2.0.0",
+  "parameters": {
+    "udp_send_buffer_size": {
+      "xml_path": "transport_descriptors/transport_descriptor[OptimizedUDPv4]/sendBufferSize",
+      "description": "Size of the sending socket buffer in bytes (octets). Default 0 means the OS default (~212 KB on Linux). Increasing this reduces packet loss under high-throughput bursts by allowing more data to be queued in the kernel before the application reads it. Recommended: 1 MB–8 MB for high-throughput ROS2 topics. Setting too large wastes memory; setting too small causes drops under burst traffic.",
+      "type": "uint32",
+      "default": 0,
+      "min": 0,
+      "max": 67108864,
+      "unit": "bytes",
+      "impact": "throughput, reliability"
+    },
+    "udp_receive_buffer_size": {
+      "xml_path": "transport_descriptors/transport_descriptor[OptimizedUDPv4]/receiveBufferSize",
+      "description": "Size of the receiving socket buffer in bytes (octets). Default 0 means the OS default. This buffer holds incoming UDP datagrams before the application processes them. Larger values reduce packet loss under burst traffic and high-frequency publishing. Recommended: 4 MB–16 MB for high-throughput scenarios. Must not exceed the OS maximum (check /proc/sys/net/core/rmem_max on Linux).",
+      "type": "uint32",
+      "default": 0,
+      "min": 0,
+      "max": 67108864,
+      "unit": "bytes",
+      "impact": "throughput, reliability"
+    },
+    "udp_max_message_size": {
+      "xml_path": "transport_descriptors/transport_descriptor[OptimizedUDPv4]/maxMessageSize",
+      "description": "Maximum size of a UDP datagram in bytes. Must not exceed the network MTU minus IP/UDP headers (typically 65507 bytes for IPv4). Default 65500 bytes. For loopback (single-host) communication, the OS loopback MTU is typically 65536, so the default is safe. Reducing this forces fragmentation of large messages into smaller datagrams.",
+      "type": "uint32",
+      "default": 65500,
+      "min": 1,
+      "max": 65500,
+      "unit": "bytes",
+      "impact": "throughput, latency"
+    },
+    "udp_non_blocking_send": {
+      "xml_path": "transport_descriptors/transport_descriptor[OptimizedUDPv4]/non_blocking_send",
+      "description": "When true, send operations return immediately if the socket send buffer is full instead of blocking the calling thread. The datagram is silently dropped (no error is returned to the upper layer). Useful for high-frequency best-effort writers where dropping occasional messages is acceptable and blocking would cause latency spikes. When false (default), send blocks until the kernel buffer has space, which can hinder performance on high-frequency writers.",
+      "type": "bool",
+      "default": false,
+      "possible_values": [true, false],
+      "impact": "latency"
+    },
+    "shm_max_message_size": {
+      "xml_path": "transport_descriptors/transport_descriptor[OptimizedSHM]/maxMessageSize",
+      "description": "Maximum message size for the shared memory (SHM) transport in bytes. Should be set to at least the size of the largest message type used (e.g., a 1280×720 RGB image is ~2.7 MB). For single-host deployments, SHM transport is dramatically faster than UDP because it avoids kernel network stack overhead entirely. Default 512 KB is too small for camera/point-cloud data.",
+      "type": "uint32",
+      "default": 524288,
+      "min": 1,
+      "max": 4294967295,
+      "unit": "bytes",
+      "impact": "throughput, latency"
+    },
+    "shm_segment_size": {
+      "xml_path": "transport_descriptors/transport_descriptor[OptimizedSHM]/segment_size",
+      "description": "Total size of the shared memory segment in bytes. Must be larger than maxMessageSize × port_queue_capacity to avoid overflow. The segment is a fixed-size region of shared memory allocated at startup. Larger values allow more concurrent in-flight messages but consume more RAM. Recommended: at least 4× the largest message size.",
+      "type": "uint32",
+      "default": 262144,
+      "min": 1,
+      "max": 4294967295,
+      "unit": "bytes",
+      "impact": "throughput, memory"
+    },
+    "shm_port_queue_capacity": {
+      "xml_path": "transport_descriptors/transport_descriptor[OptimizedSHM]/port_queue_capacity",
+      "description": "Number of message slots in the SHM port queue per listener. Each slot holds a reference to a message in the shared memory segment. Higher values reduce message drops under burst traffic at the cost of more memory. If a listener is slow and the queue fills up, new messages are dropped. Default 512.",
+      "type": "uint32",
+      "default": 512,
+      "min": 1,
+      "max": 65536,
+      "unit": "messages",
+      "impact": "throughput, reliability"
+    },
+    "participant_send_socket_buffer": {
+      "xml_path": "participant/rtps/sendSocketBufferSize",
+      "description": "Participant-level send socket buffer size in bytes. Overrides the transport-level sendBufferSize for this participant. 0 = use the transport descriptor default. Set this when different participants need different buffer sizes.",
+      "type": "uint32",
+      "default": 0,
+      "min": 0,
+      "max": 67108864,
+      "unit": "bytes",
+      "impact": "throughput"
+    },
+    "participant_listen_socket_buffer": {
+      "xml_path": "participant/rtps/listenSocketBufferSize",
+      "description": "Participant-level receive socket buffer size in bytes. Overrides the transport-level receiveBufferSize for this participant. 0 = use the transport descriptor default.",
+      "type": "uint32",
+      "default": 0,
+      "min": 0,
+      "max": 67108864,
+      "unit": "bytes",
+      "impact": "throughput, reliability"
+    },
+    "lease_duration_sec": {
+      "xml_path": "participant/rtps/builtin/discovery_config/leaseDuration/sec",
+      "description": "Duration in seconds that a remote participant is considered alive without receiving announcements. If no announcement is received within this period, the participant is considered dead and its endpoints are removed. Shorter values detect failures faster but increase discovery traffic. Default 20 s. For stable single-host deployments, 60–120 s reduces overhead.",
+      "type": "int32",
+      "default": 20,
+      "min": 1,
+      "max": 3600,
+      "unit": "seconds",
+      "impact": "discovery, cpu"
+    },
+    "lease_announcement_sec": {
+      "xml_path": "participant/rtps/builtin/discovery_config/leaseAnnouncement/sec",
+      "description": "Period in seconds between participant liveness announcements (PDP messages). Must be less than leaseDuration. Shorter period = faster failure detection but more discovery traffic. Default 3 s. For stable deployments, 10–20 s is sufficient.",
+      "type": "int32",
+      "default": 3,
+      "min": 0,
+      "max": 60,
+      "unit": "seconds",
+      "impact": "discovery, cpu"
+    },
+    "lease_announcement_nanosec": {
+      "xml_path": "participant/rtps/builtin/discovery_config/leaseAnnouncement/nanosec",
+      "description": "Nanosecond component of the lease announcement period. Combined with lease_announcement_sec to form the full period. Use this for sub-second announcement intervals (e.g., 500000000 ns = 0.5 s).",
+      "type": "uint32",
+      "default": 0,
+      "min": 0,
+      "max": 999999999,
+      "unit": "nanoseconds",
+      "impact": "discovery"
+    },
+    "initial_announcements_count": {
+      "xml_path": "participant/rtps/builtin/discovery_config/initialAnnouncements/count",
+      "description": "Number of rapid PDP announcements sent at participant startup. More announcements increase the probability that all peers discover this participant quickly, especially on lossy networks. Default 5. For reliable single-host deployments, 3 is sufficient.",
+      "type": "uint32",
+      "default": 5,
+      "min": 1,
+      "max": 100,
+      "unit": "count",
+      "impact": "discovery latency"
+    },
+    "initial_announcements_period_nanosec": {
+      "xml_path": "participant/rtps/builtin/discovery_config/initialAnnouncements/period/nanosec",
+      "description": "Period between initial rapid PDP announcements in nanoseconds. Smaller values accelerate initial discovery. Default 100 ms (100000000 ns). For fast startup, use 10–50 ms (10000000–50000000 ns).",
+      "type": "uint32",
+      "default": 100000000,
+      "min": 1000000,
+      "max": 1000000000,
+      "unit": "nanoseconds",
+      "impact": "discovery latency"
+    },
+    "reader_history_memory_policy": {
+      "xml_path": "participant/rtps/builtin/readerHistoryMemoryPolicy",
+      "description": "Memory allocation policy for the builtin (discovery) reader history. PREALLOCATED_MEMORY_MODE: allocates the maximum number of samples at startup — lowest latency, highest memory. PREALLOCATED_WITH_REALLOC_MEMORY_MODE: preallocates initial capacity and reallocates if exceeded — good balance. DYNAMIC_RESERVE_MEMORY_MODE: allocates each sample individually — lowest memory, highest latency. DYNAMIC_REUSABLE_MEMORY_MODE: reuses previously allocated memory — good for steady-state workloads.",
+      "type": "string",
+      "default": "PREALLOCATED_WITH_REALLOC_MEMORY_MODE",
+      "possible_values": ["PREALLOCATED_MEMORY_MODE", "PREALLOCATED_WITH_REALLOC_MEMORY_MODE", "DYNAMIC_RESERVE_MEMORY_MODE", "DYNAMIC_REUSABLE_MEMORY_MODE"],
+      "impact": "latency, memory"
+    },
+    "writer_history_memory_policy": {
+      "xml_path": "participant/rtps/builtin/writerHistoryMemoryPolicy",
+      "description": "Memory allocation policy for the builtin (discovery) writer history. Same options as readerHistoryMemoryPolicy. PREALLOCATED_MEMORY_MODE gives the lowest latency at the cost of higher memory usage.",
+      "type": "string",
+      "default": "PREALLOCATED_WITH_REALLOC_MEMORY_MODE",
+      "possible_values": ["PREALLOCATED_MEMORY_MODE", "PREALLOCATED_WITH_REALLOC_MEMORY_MODE", "DYNAMIC_RESERVE_MEMORY_MODE", "DYNAMIC_REUSABLE_MEMORY_MODE"],
+      "impact": "latency, memory"
+    },
+    "max_unicast_locators": {
+      "xml_path": "participant/rtps/allocation/remote_locators/max_unicast_locators",
+      "description": "Maximum number of unicast locators (IP:port pairs) pre-allocated per remote entity. Should be set to the number of network interfaces on the remote host. Default 4. For single-NIC hosts, set to 1 to reduce memory usage.",
+      "type": "uint32",
+      "default": 4,
+      "min": 1,
+      "max": 32,
+      "unit": "count",
+      "impact": "memory, discovery"
+    },
+    "max_multicast_locators": {
+      "xml_path": "participant/rtps/allocation/remote_locators/max_multicast_locators",
+      "description": "Maximum number of multicast locators pre-allocated per remote entity. Set to 0 to disable multicast entirely (recommended for single-host deployments to reduce discovery overhead). Default 1.",
+      "type": "uint32",
+      "default": 1,
+      "min": 0,
+      "max": 4,
+      "unit": "count",
+      "impact": "memory, discovery"
+    },
+    "total_participants_initial": {
+      "xml_path": "participant/rtps/allocation/total_participants/initial",
+      "description": "Number of participant slots pre-allocated at startup. Setting this to the expected number of participants avoids dynamic memory allocation during discovery, reducing latency spikes. Default 0 (fully dynamic). For a known fixed topology, set to the exact participant count.",
+      "type": "uint32",
+      "default": 0,
+      "min": 0,
+      "max": 1000,
+      "unit": "count",
+      "impact": "latency, memory"
+    },
+    "total_participants_maximum": {
+      "xml_path": "participant/rtps/allocation/total_participants/maximum",
+      "description": "Maximum number of remote participants this participant will track. 0 = unlimited (default). Setting a bound caps memory usage and prevents unbounded growth in large deployments.",
+      "type": "uint32",
+      "default": 0,
+      "min": 0,
+      "max": 1000,
+      "unit": "count",
+      "impact": "memory"
+    },
+    "total_readers_initial": {
+      "xml_path": "participant/rtps/allocation/total_readers/initial",
+      "description": "Number of remote DataReader slots pre-allocated at startup. Setting this to the expected number of readers avoids dynamic allocation during endpoint discovery. Default 0 (dynamic). For known topologies, set to the total number of DataReaders across all remote participants.",
+      "type": "uint32",
+      "default": 0,
+      "min": 0,
+      "max": 1000,
+      "unit": "count",
+      "impact": "latency, memory"
+    },
+    "total_readers_maximum": {
+      "xml_path": "participant/rtps/allocation/total_readers/maximum",
+      "description": "Maximum number of remote DataReaders this participant will track. 0 = unlimited. Bounding this caps memory usage.",
+      "type": "uint32",
+      "default": 0,
+      "min": 0,
+      "max": 1000,
+      "unit": "count",
+      "impact": "memory"
+    },
+    "total_writers_initial": {
+      "xml_path": "participant/rtps/allocation/total_writers/initial",
+      "description": "Number of remote DataWriter slots pre-allocated at startup. Setting this to the expected number of writers avoids dynamic allocation during endpoint discovery. Default 0 (dynamic).",
+      "type": "uint32",
+      "default": 0,
+      "min": 0,
+      "max": 1000,
+      "unit": "count",
+      "impact": "latency, memory"
+    },
+    "total_writers_maximum": {
+      "xml_path": "participant/rtps/allocation/total_writers/maximum",
+      "description": "Maximum number of remote DataWriters this participant will track. 0 = unlimited. Bounding this caps memory usage.",
+      "type": "uint32",
+      "default": 0,
+      "min": 0,
+      "max": 1000,
+      "unit": "count",
+      "impact": "memory"
+    },
+    "send_buffers_preallocated": {
+      "xml_path": "participant/rtps/allocation/send_buffers/preallocated_number",
+      "description": "Number of send buffers to pre-allocate in the participant's send buffer pool. 0 = auto-detect based on the number of logical CPU cores. Pre-allocating eliminates runtime allocation overhead during message sending. Set to the number of concurrent sending threads for best performance.",
+      "type": "uint32",
+      "default": 0,
+      "min": 0,
+      "max": 256,
+      "unit": "count",
+      "impact": "throughput, latency"
+    },
+    "send_buffers_dynamic": {
+      "xml_path": "participant/rtps/allocation/send_buffers/dynamic",
+      "description": "Allow the send buffer pool to grow dynamically beyond the preallocated_number. true = allocate additional buffers on demand (avoids blocking but increases memory). false = fixed pool size (may block if all buffers are in use). Default false.",
+      "type": "bool",
+      "default": false,
+      "possible_values": [true, false],
+      "impact": "throughput, memory"
+    },
+    "history_kind": {
+      "xml_path": "data_writer/topic/historyQos/kind AND data_reader/topic/historyQos/kind",
+      "description": "History QoS policy kind. KEEP_LAST: retain only the N most recent samples (controlled by depth). Older samples are overwritten. Lower memory usage, suitable for real-time sensor data where only the latest value matters. KEEP_ALL: retain all samples until they are acknowledged by all matched readers. Higher memory usage, required for reliable delivery of every sample.",
+      "type": "string",
+      "default": "KEEP_LAST",
+      "possible_values": ["KEEP_LAST", "KEEP_ALL"],
+      "impact": "latency, memory, reliability"
+    },
+    "history_depth": {
+      "xml_path": "data_writer/topic/historyQos/depth AND data_reader/topic/historyQos/depth",
+      "description": "Number of samples to retain in the history when kind=KEEP_LAST. depth=1 means only the most recent sample is kept — lowest memory and latency, but no buffering for burst traffic. Higher depth provides a buffer for bursty publishers or slow consumers, at the cost of increased memory and potential latency increase.",
+      "type": "uint32",
+      "default": 1,
+      "min": 1,
+      "max": 10000,
+      "unit": "samples",
+      "impact": "latency, memory, reliability"
+    },
+    "max_samples": {
+      "xml_path": "data_writer/topic/resourceLimitsQos/max_samples AND data_reader/topic/resourceLimitsQos/max_samples",
+      "description": "Maximum total number of samples that can exist in the DataWriter or DataReader at any time (across all instances). Must be >= max_instances × max_samples_per_instance. -1 = unlimited (bounded only by available memory). Setting this prevents unbounded memory growth under high-frequency publishing.",
+      "type": "int32",
+      "default": 5000,
+      "min": 1,
+      "max": 100000,
+      "unit": "samples",
+      "impact": "memory, throughput"
+    },
+    "allocated_samples": {
+      "xml_path": "data_writer/topic/resourceLimitsQos/allocated_samples AND data_reader/topic/resourceLimitsQos/allocated_samples",
+      "description": "Number of samples to pre-allocate in the history pool at startup. Pre-allocating avoids runtime memory allocation during publishing/subscribing, reducing latency jitter. Should be set to the expected steady-state number of in-flight samples. Must be <= max_samples.",
+      "type": "int32",
+      "default": 100,
+      "min": 1,
+      "max": 10000,
+      "unit": "samples",
+      "impact": "latency, memory"
+    },
+    "reliability_kind": {
+      "xml_path": "data_writer/qos/reliability/kind AND data_reader/qos/reliability/kind",
+      "description": "Reliability QoS policy. RELIABLE: guarantees delivery of every sample using acknowledgments and retransmissions. Higher latency due to ACK/NACK round-trips, but zero packet loss. Required when packet_loss_rate must be 0. BEST_EFFORT: no retransmission, no acknowledgment. Lowest latency, but samples may be lost if the network drops packets. Suitable for high-frequency sensor data where occasional loss is acceptable.",
+      "type": "string",
+      "default": "RELIABLE",
+      "possible_values": ["RELIABLE", "BEST_EFFORT"],
+      "impact": "latency, reliability"
+    },
+    "durability_kind": {
+      "xml_path": "data_writer/qos/durability/kind AND data_reader/qos/durability/kind",
+      "description": "Durability QoS policy. VOLATILE: samples are not stored for late-joining readers — lowest memory and latency. TRANSIENT_LOCAL: the DataWriter caches samples so late-joining readers receive recent history. Requires more memory (history_depth samples cached). For real-time sensor pipelines where late joiners should start from the current state, TRANSIENT_LOCAL with depth=1 is common.",
+      "type": "string",
+      "default": "VOLATILE",
+      "possible_values": ["VOLATILE", "TRANSIENT_LOCAL"],
+      "impact": "latency, memory"
+    },
+    "data_sharing_kind": {
+      "xml_path": "data_writer/qos/data_sharing/kind AND data_reader/qos/data_sharing/kind",
+      "description": "Data sharing (zero-copy) mode for same-host communication. AUTO: enable data sharing automatically when writer and reader are on the same host and the message type is compatible — zero-copy delivery via shared memory, dramatically reducing latency and CPU usage. ON: force enable (fails if not compatible). OFF: disable data sharing, always use transport. For single-host ROS2 pipelines, AUTO or ON can reduce latency by 10–100×.",
+      "type": "string",
+      "default": "AUTO",
+      "possible_values": ["AUTO", "ON", "OFF"],
+      "impact": "latency, throughput (single-host)"
+    },
+    "publish_mode": {
+      "xml_path": "data_writer/qos/publishMode/kind",
+      "description": "DataWriter publish mode. SYNCHRONOUS: the write() call sends the message directly in the calling thread before returning. Lowest latency for single-threaded publishers. ASYNCHRONOUS: the write() call queues the message and returns immediately; a background thread sends it. Non-blocking for the publisher, but adds a small scheduling delay. Use SYNCHRONOUS for latency-critical topics.",
+      "type": "string",
+      "default": "SYNCHRONOUS",
+      "possible_values": ["SYNCHRONOUS", "ASYNCHRONOUS"],
+      "impact": "latency"
+    },
+    "disable_positive_acks": {
+      "xml_path": "data_writer/qos/disablePositiveAcks/enabled",
+      "description": "When true, readers do not send positive acknowledgments (ACKs) to the writer. The writer assumes delivery after a keep_duration timeout instead of waiting for explicit ACKs. This reduces ACK traffic and improves throughput, but the writer cannot confirm delivery. Useful for high-frequency topics where throughput matters more than confirmed delivery.",
+      "type": "bool",
+      "default": false,
+      "possible_values": [true, false],
+      "impact": "throughput, reliability"
+    },
+    "writer_heartbeat_period_sec": {
+      "xml_path": "data_writer/times/heartbeatPeriod/sec",
+      "description": "Seconds component of the DataWriter heartbeat period. The writer periodically sends heartbeat messages to inform readers of the range of available sequence numbers. Readers use this to detect missing samples and send NACKs. Shorter period = faster loss detection and recovery, but more network overhead. Default combined period is 500 ms.",
+      "type": "int32",
+      "default": 0,
+      "min": 0,
+      "max": 60,
+      "unit": "seconds",
+      "impact": "latency, reliability, cpu"
+    },
+    "writer_heartbeat_period_nanosec": {
+      "xml_path": "data_writer/times/heartbeatPeriod/nanosec",
+      "description": "Nanoseconds component of the DataWriter heartbeat period. Default 500 ms (500000000 ns). For low-latency reliable communication, reduce to 50–100 ms (50000000–100000000 ns) to speed up loss detection. For best-effort or high-frequency topics, a longer period (1–5 s) reduces overhead.",
+      "type": "uint32",
+      "default": 500000000,
+      "min": 1000000,
+      "max": 999999999,
+      "unit": "nanoseconds",
+      "impact": "latency, reliability, cpu"
+    },
+    "writer_nack_response_delay_nanosec": {
+      "xml_path": "data_writer/times/nackResponseDelay/nanosec",
+      "description": "Delay in nanoseconds before the DataWriter responds to a NACK (retransmission request) from a reader. Shorter delay = faster retransmission = lower recovery latency. Default 5 ms (5000000 ns). For low-latency reliable pipelines, set to 0–1 ms (0–1000000 ns). Setting to 0 means immediate retransmission.",
+      "type": "uint32",
+      "default": 5000000,
+      "min": 0,
+      "max": 100000000,
+      "unit": "nanoseconds",
+      "impact": "latency, reliability"
+    },
+    "data_writer_history_memory_policy": {
+      "xml_path": "data_writer/historyMemoryPolicy",
+      "description": "Memory allocation policy for the DataWriter's sample history. PREALLOCATED_MEMORY_MODE: allocates all sample slots at startup — lowest latency, highest memory. PREALLOCATED_WITH_REALLOC_MEMORY_MODE: preallocates initial capacity and grows if needed. DYNAMIC_RESERVE_MEMORY_MODE: allocates each sample on demand — lowest memory, highest latency. DYNAMIC_REUSABLE_MEMORY_MODE: reuses freed sample memory — good balance for steady-state workloads.",
+      "type": "string",
+      "default": "PREALLOCATED_WITH_REALLOC_MEMORY_MODE",
+      "possible_values": ["PREALLOCATED_MEMORY_MODE", "PREALLOCATED_WITH_REALLOC_MEMORY_MODE", "DYNAMIC_RESERVE_MEMORY_MODE", "DYNAMIC_REUSABLE_MEMORY_MODE"],
+      "impact": "latency, memory"
+    },
+    "reader_initial_acknack_delay_nanosec": {
+      "xml_path": "data_reader/times/initialAcknackDelay/nanosec",
+      "description": "Initial delay in nanoseconds before the DataReader sends its first ACKNACK after matching a writer. This delay allows the writer to send initial samples before the reader requests missing ones. Default 70 ms (70000000 ns). For low-latency pipelines, reduce to 1–5 ms (1000000–5000000 ns) to start acknowledging immediately.",
+      "type": "uint32",
+      "default": 70000000,
+      "min": 0,
+      "max": 500000000,
+      "unit": "nanoseconds",
+      "impact": "latency"
+    },
+    "reader_heartbeat_response_delay_nanosec": {
+      "xml_path": "data_reader/times/heartbeatResponseDelay/nanosec",
+      "description": "Delay in nanoseconds before the DataReader responds to a heartbeat from the writer with an ACKNACK. Shorter delay = faster acknowledgment = lower end-to-end latency for reliable communication. Default 5 ms (5000000 ns). For low-latency pipelines, set to 0–1 ms (0–1000000 ns).",
+      "type": "uint32",
+      "default": 5000000,
+      "min": 0,
+      "max": 100000000,
+      "unit": "nanoseconds",
+      "impact": "latency"
+    },
+    "data_reader_history_memory_policy": {
+      "xml_path": "data_reader/historyMemoryPolicy",
+      "description": "Memory allocation policy for the DataReader's sample history. PREALLOCATED_MEMORY_MODE: allocates all sample slots at startup — lowest latency, highest memory. PREALLOCATED_WITH_REALLOC_MEMORY_MODE: preallocates initial capacity and grows if needed. DYNAMIC_RESERVE_MEMORY_MODE: allocates each sample on demand — lowest memory, highest latency. DYNAMIC_REUSABLE_MEMORY_MODE: reuses freed sample memory — good balance for steady-state workloads.",
+      "type": "string",
+      "default": "PREALLOCATED_WITH_REALLOC_MEMORY_MODE",
+      "possible_values": ["PREALLOCATED_MEMORY_MODE", "PREALLOCATED_WITH_REALLOC_MEMORY_MODE", "DYNAMIC_RESERVE_MEMORY_MODE", "DYNAMIC_REUSABLE_MEMORY_MODE"],
+      "impact": "latency, memory"
+    },
+    "intraprocess_delivery": {
+      "xml_path": "library_settings/intraprocess_delivery",
+      "description": "Intraprocess delivery mode for communication between DataWriters and DataReaders within the same process. OFF: all communication goes through the transport layer (UDP/SHM) even within the same process. USER_DATA_ONLY: bypass the transport for user data topics; built-in topics still use transport. FULL: bypass the transport for all communication including built-in topics. FULL or USER_DATA_ONLY dramatically reduces latency (sub-microsecond) and CPU usage for same-process ROS2 nodes by eliminating serialization and network overhead entirely.",
+      "type": "string",
+      "default": "OFF",
+      "possible_values": ["OFF", "USER_DATA_ONLY", "FULL"],
+      "impact": "latency, throughput (same-process)"
+    },
+    "flow_controller_max_bytes_per_period": {
+      "xml_path": "flow_controller/max_bytes_per_period",
+      "description": "Maximum number of bytes the flow controller allows to be sent per period. Used to cap bandwidth consumption and prevent a single DataWriter from saturating the network. 0 = unlimited (no flow control). Setting this limits peak memory usage in the send queue and prevents buffer bloat. Recommended for memory-constrained deployments or when sharing bandwidth with other applications.",
+      "type": "int32",
+      "default": 0,
+      "min": 0,
+      "max": 2147483647,
+      "unit": "bytes",
+      "impact": "throughput, memory, latency"
+    },
+    "flow_controller_period_ms": {
+      "xml_path": "flow_controller/period_ms",
+      "description": "Period in milliseconds for the flow controller token bucket. Tokens (bytes) are replenished every period. Combined with max_bytes_per_period, this controls the sustained bandwidth: bandwidth = max_bytes_per_period / period_ms × 1000 bytes/sec. Shorter period = smoother traffic shaping but more overhead. Default 100 ms.",
+      "type": "int32",
+      "default": 100,
+      "min": 1,
+      "max": 10000,
+      "unit": "milliseconds",
+      "impact": "throughput, latency"
+    }
+  }
+}

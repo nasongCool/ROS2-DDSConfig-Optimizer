@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<optimization_requirements>
+    <benchmark>
+        <test_file>/path/to/your/benchmark_test.py</test_file>
+        <launch_command>launch_test</launch_command>
+    </benchmark>
+
+    <performance_requirements>
+        <latency optional="false">
+            <target_mean_ms>10</target_mean_ms>
+            <target_p95_ms>15</target_p95_ms>
+            <target_p99_ms>20</target_p99_ms>
+        </latency>
+        <reliability optional="false">
+            <max_packet_loss_rate>0.001</max_packet_loss_rate>
+        </reliability>
+        <!--
+            NOTE: If your publisher sends at a fixed rate (e.g., a sensor node at 10 Hz),
+            the measured throughput is bounded by that publish rate regardless of DDS settings.
+            Setting target_msgs_per_sec higher than the publisher's actual rate will cause
+            this requirement to appear permanently unmet across all optimization epochs.
+        -->
+        <throughput optional="true">
+            <target_msgs_per_sec>1000</target_msgs_per_sec>
+        </throughput>
+        <cpu_max_usage optional="true">
+            <max_percent>50</max_percent>   <!-- unit: % -->
+        </cpu_max_usage>
+        <memory_max_usage optional="true">
+            <max_mb>1024</max_mb>           <!-- unit: MB -->
+        </memory_max_usage>
+    </performance_requirements>
+
+    <optimization_settings>
+        <max_iterations>5</max_iterations>
+        <convergence_threshold>0.05</convergence_threshold>
+    </optimization_settings>
+
+    <!--
+        LLM configuration.
+
+        Option A — OpenRouter (recommended, free models available):
+            export LLM_API_KEY=<your-openrouter-api-key>
+            Get a free key at https://openrouter.ai/
+
+            <provider>openrouter</provider>
+            <model>openrouter/free</model>
+            <api_key_env>LLM_API_KEY</api_key_env>
+
+        Option B — OpenAI:
+            export LLM_API_KEY=<your-openai-api-key>
+
+            <provider>openai</provider>
+            <model>gpt-4o</model>
+            <base_url>https://api.openai.com/v1</base_url>
+            <api_key_env>LLM_API_KEY</api_key_env>
+
+        Option C — Anthropic:
+            export LLM_API_KEY=<your-anthropic-api-key>
+
+            <provider>anthropic</provider>
+            <model>claude-3-5-sonnet/model>
+            <api_key_env>LLM_API_KEY</api_key_env>
+
+        Option D — Custom plugin provider:
+            <provider>plugin</provider>
+            <model>your-model-name</model>
+            <api_key_env>LLM_API_KEY</api_key_env>
+            <plugin_module>extensions.your_provider.llm_provider</plugin_module>
+    -->
+    <llm_config>
+        <provider>openrouter</provider>
+        <model>openrouter/free</model>
+        <api_key_env>LLM_API_KEY</api_key_env>
+    </llm_config>
+</optimization_requirements>
