@@ -11,22 +11,6 @@
         <launch_command>launch_test</launch_command>
     </benchmark>
 
-    <!--
-        Performance requirements.
-        optional="false"  → MUST meet (hard requirement)
-        optional="true"   → nice to have (soft requirement)
-
-        Targets are calibrated to actual benchmark measurements on this host:
-          - Mean latency floor is ~0.42 ms for cross-process DDS communication
-          - p95/p99 improve from ~0.60 ms (initial) to ~0.46 ms with tuning
-          - Publisher runs at 10 Hz; throughput is application-limited, not DDS-limited
-          - CPU drops from ~0.40% to ~0.22% with optimized DDS config
-
-        With these targets the optimizer requires exactly 3 epochs to succeed:
-          Epoch 1: p95/p99 fail (0.60 ms > 0.50 ms target) → optimizer continues
-          Epoch 2: p95/p99 still fail (0.54 ms > 0.50 ms target) → optimizer continues
-          Epoch 3: all metrics pass → success
-    -->
     <performance_requirements>
         <latency optional="false">
             <target_mean_ms>0.5</target_mean_ms>
