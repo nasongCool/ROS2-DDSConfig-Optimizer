@@ -5,8 +5,8 @@
 
 import pytest
 
-from fastdds_optimizer.models import BenchmarkResults, PerformanceRequirements
-from fastdds_optimizer.optimizer.evaluator import (
+from dds_optimizer.models import BenchmarkResults, PerformanceRequirements
+from dds_optimizer.optimizer.evaluator import (
     EvaluationResult,
     check_convergence,
     evaluate_results,
@@ -26,7 +26,7 @@ def make_requirements(
     cpu_optional=True,
 ):
     """Helper to create PerformanceRequirements for testing."""
-    from fastdds_optimizer.models import (
+    from dds_optimizer.models import (
         LatencyRequirement,
         ThroughputRequirement,
         ReliabilityRequirement,
@@ -216,7 +216,7 @@ def test_bug_convergence_check_unreachable(tmp_path):
     """
     from unittest.mock import MagicMock, patch
 
-    from fastdds_optimizer.models import (
+    from dds_optimizer.models import (
         BenchmarkConfig,
         BenchmarkResults,
         DDSParameterSet,
@@ -226,7 +226,7 @@ def test_bug_convergence_check_unreachable(tmp_path):
         OptimizationSettings,
         RequirementsConfig,
     )
-    from fastdds_optimizer.optimizer.optimization_loop import _run_optimization_loop
+    from dds_optimizer.optimizer.optimization_loop import _run_optimization_loop
 
     # Requirements: 5 max iterations, 5% convergence threshold
     requirements = RequirementsConfig(
@@ -269,12 +269,17 @@ def test_bug_convergence_check_unreachable(tmp_path):
     dummy_config_path = tmp_path / "epoch_1" / "fastdds_config.xml"
     dummy_config_path.parent.mkdir(parents=True)
 
-    module = "fastdds_optimizer.optimizer.optimization_loop"
+    mock_backend = MagicMock()
+    mock_backend.generate_config.return_value = dummy_config_path
+    mock_backend.profiles_env_var = "FASTRTPS_DEFAULT_PROFILES_FILE"
+    mock_backend.rmw_implementation = "rmw_fastrtps_cpp"
+    mock_backend.name = "fastdds"
+    module = "dds_optimizer.optimizer.optimization_loop"
     with (
         patch(f"{module}.run_benchmark", return_value=(tmp_path / "result.json", None)),
         patch(f"{module}.parse_benchmark_results", return_value=dummy_results),
         patch(f"{module}.evaluate_results", side_effect=[eval_iter1, eval_iter2]),
-        patch(f"{module}.generate_fastdds_config"),
+        patch(f"{module}.get_backend", return_value=mock_backend),
         patch(
             f"{module}._generate_config_with_llm",
             return_value=(dummy_param_set, "prompt", "response"),
